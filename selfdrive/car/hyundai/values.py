@@ -47,7 +47,11 @@ class CAR:
 
 
 # ex) CAR_FORCE_RECOGNITION = CAR.GRANDEUR_IG
+
+
+
 CAR_FORCE_RECOGNITION = CAR.K7
+
 
 class Buttons:
   NONE = 0
