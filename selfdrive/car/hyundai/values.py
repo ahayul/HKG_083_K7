@@ -465,6 +465,7 @@ FW_VERSIONS = {
   CAR.K7: {
     (Ecu.eps, 0x7d4, None): [b'\xf1\000YG  MDPS C 1.00 1.00 99800-F6563 4YGAC100',],
     (Ecu.fwdCamera, 0x7c4, None): [b'\xf1\00IG MFC 1.00 1.00 95740-F9200 180915',],
+    (Ecu.fwdRadar, 0x7d0, None): [ b'\xf1\x00YG__ SCC F_CUP   1.01 1.02 96400-F6000     \xf1\xa01.01',], 
   },
 }
 
