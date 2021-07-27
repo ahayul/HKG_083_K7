@@ -21,7 +21,7 @@ min_set_speed = 30 * CV.KPH_TO_MS
 class CarControllerParams:
   ACCEL_HYST_GAP = 0.02  # don't change accel command for small oscilalitons within this value
   ACCEL_MAX = 1.5  # 1.5 m/s2
-  ACCEL_MIN = -4.0  # 3   m/s2
+  ACCEL_MIN = -5.0  # 5   m/s2
   ACCEL_SCALE = max(ACCEL_MAX, -ACCEL_MIN)
   # SPAS steering limits
   STEER_ANG_MAX = 360  # SPAS Max Angle
