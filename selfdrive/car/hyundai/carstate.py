@@ -3,6 +3,7 @@ from selfdrive.car.hyundai.values import DBC, STEER_THRESHOLD, FEATURES, CAR
 from selfdrive.car.interfaces import CarStateBase
 from opendbc.can.parser import CANParser
 from selfdrive.config import Conversions as CV
+from common.params import Params
 
 GearShifter = car.CarState.GearShifter
 
@@ -36,6 +37,8 @@ class CarState(CarStateBase):
     self.cruiseState_enabled = False
     self.cruiseState_speed = 0
 
+    self.use_cluster_speed = Params().get_bool('UseClusterSpeed')
+
   def update(self, cp, cp2, cp_cam):
     cp_mdps = cp2 if self.mdps_bus else cp
     cp_sas = cp2 if self.sas_bus else cp
@@ -54,20 +57,25 @@ class CarState(CarStateBase):
 
     ret.seatbeltUnlatched = cp.vl["CGW1"]['CF_Gway_DrvSeatBeltSw'] == 0
 
-    #print(cp.vl["CLU11"]["CF_Clu_Vanz"], cp.vl["CLU11"]["CF_Clu_VanzDecimal"])
+    self.is_set_speed_in_mph = bool(cp.vl["CLU11"]["CF_Clu_SPEED_UNIT"])
+    self.speed_conv_to_ms = CV.MPH_TO_MS if self.is_set_speed_in_mph else CV.KPH_TO_MS
 
-    #ret.wheelSpeeds.fl = cp.vl["WHL_SPD11"]['WHL_SPD_FL'] * CV.KPH_TO_MS
-    #ret.wheelSpeeds.fr = cp.vl["WHL_SPD11"]['WHL_SPD_FR'] * CV.KPH_TO_MS
-    #ret.wheelSpeeds.rl = cp.vl["WHL_SPD11"]['WHL_SPD_RL'] * CV.KPH_TO_MS
-    #ret.wheelSpeeds.rr = cp.vl["WHL_SPD11"]['WHL_SPD_RR'] * CV.KPH_TO_MS
-    #ret.vEgoRaw = (ret.wheelSpeeds.fl + ret.wheelSpeeds.fr + ret.wheelSpeeds.rl + ret.wheelSpeeds.rr) / 4.
+    if self.use_cluster_speed:
 
-    ret.vEgoRaw = cp.vl["CLU11"]["CF_Clu_Vanz"]
-    decimal = cp.vl["CLU11"]["CF_Clu_VanzDecimal"]
-    if 0. < decimal < 0.5:
-      ret.vEgoRaw += decimal
+      ret.vEgoRaw = cp.vl["CLU11"]["CF_Clu_Vanz"]
+      decimal = cp.vl["CLU11"]["CF_Clu_VanzDecimal"]
+      if 0. < decimal < 0.5:
+        ret.vEgoRaw += decimal
 
-    ret.vEgoRaw *= CV.KPH_TO_MS
+      ret.vEgoRaw *= self.speed_conv_to_ms
+
+    else:
+      ret.wheelSpeeds.fl = cp.vl["WHL_SPD11"]['WHL_SPD_FL'] * CV.KPH_TO_MS
+      ret.wheelSpeeds.fr = cp.vl["WHL_SPD11"]['WHL_SPD_FR'] * CV.KPH_TO_MS
+      ret.wheelSpeeds.rl = cp.vl["WHL_SPD11"]['WHL_SPD_RL'] * CV.KPH_TO_MS
+      ret.wheelSpeeds.rr = cp.vl["WHL_SPD11"]['WHL_SPD_RR'] * CV.KPH_TO_MS
+      ret.vEgoRaw = (ret.wheelSpeeds.fl + ret.wheelSpeeds.fr + ret.wheelSpeeds.rl + ret.wheelSpeeds.rr) / 4.
+
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
 
     ret.standstill = ret.vEgoRaw < 0.1
@@ -96,9 +104,8 @@ class CarState(CarStateBase):
     ret.cruiseState.standstill = cp_scc.vl["SCC11"]['SCCInfoDisplay'] == 4. if not self.no_radar else False
     self.is_set_speed_in_mph = bool(cp.vl["CLU11"]["CF_Clu_SPEED_UNIT"])
     if ret.cruiseState.enabled:
-      speed_conv = CV.MPH_TO_MS if self.is_set_speed_in_mph else CV.KPH_TO_MS
-      ret.cruiseState.speed = cp_scc.vl["SCC11"]['VSetDis'] * speed_conv if not self.no_radar else \
-                                         cp.vl["LVR12"]["CF_Lvr_CruiseSet"] * speed_conv
+      ret.cruiseState.speed = cp_scc.vl["SCC11"]['VSetDis'] * self.speed_conv_to_ms if not self.no_radar else \
+                                         cp.vl["LVR12"]["CF_Lvr_CruiseSet"] * self.speed_conv_to_ms
     else:
       ret.cruiseState.speed = 0
     self.cruise_main_button = cp.vl["CLU11"]["CF_Clu_CruiseSwMain"]
@@ -178,9 +185,12 @@ class CarState(CarStateBase):
       ret.stockFcw = cp.vl["SCC12"]['CF_VSM_Warn'] == 2
 
     # Blind Spot Detection and Lane Change Assist signals
-    self.lca_state = cp.vl["LCA11"]["CF_Lca_Stat"]
-    ret.leftBlindspot = cp.vl["LCA11"]["CF_Lca_IndLeft"] != 0
-    ret.rightBlindspot = cp.vl["LCA11"]["CF_Lca_IndRight"] != 0
+    if self.CP.enableBsm:
+      ret.leftBlindspot = cp.vl["LCA11"]["CF_Lca_IndLeft"] != 0
+      ret.rightBlindspot = cp.vl["LCA11"]["CF_Lca_IndRight"] != 0
+    else:
+      ret.leftBlindspot = False
+      ret.rightBlindspot = False
 
     # save the entire LKAS11, CLU11, SCC12 and MDPS12
     self.lkas11 = cp_cam.vl["LKAS11"]
@@ -264,11 +274,7 @@ class CarState(CarStateBase):
 
       ("ESC_Off_Step", "TCS15", 0),
 
-      ("CF_Lvr_GearInf", "LVR11", 0),        # Transmission Gear (0 = N or P, 1-8 = Fwd, 14 = Rev)
-
-      ("CF_Lca_Stat", "LCA11", 0),
-      ("CF_Lca_IndLeft", "LCA11", 0),
-      ("CF_Lca_IndRight", "LCA11", 0),
+      #("CF_Lvr_GearInf", "LVR11", 0),        # Transmission Gear (0 = N or P, 1-8 = Fwd, 14 = Rev)
 
       ("MainMode_ACC", "SCC11", 1),
       ("SCCInfoDisplay", "SCC11", 0),
@@ -326,6 +332,7 @@ class CarState(CarStateBase):
       ("CLU11", 50),
       ("ESP12", 100),
       ("CGW1", 10),
+      ("CGW2", 5),
       ("CGW4", 5),
       ("WHL_SPD11", 50),
     ]
@@ -413,7 +420,14 @@ class CarState(CarStateBase):
     if CP.carFingerprint in [CAR.SANTA_FE]:
       checks.remove(("TCS13", 50))
 
-    return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 0)
+    if CP.enableBsm:
+      signals += [
+        ("CF_Lca_IndLeft", "LCA11", 0),
+        ("CF_Lca_IndRight", "LCA11", 0),
+      ]
+      checks += [("LCA11", 50)]
+
+    return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 0, enforce_checks=False)
 
   @staticmethod
   def get_can2_parser(CP):
@@ -495,12 +509,16 @@ class CarState(CarStateBase):
         ("SCCMode2", "SCC14", 0),
         ("ComfortBandUpper", "SCC14", 0),
         ("ComfortBandLower", "SCC14", 0),
+
+        ("AVH_STAT", "ESP11", 0),
+        ("LDM_STAT", "ESP11", 0),
+
       ]
       checks += [
         ("SCC11", 50),
         ("SCC12", 50),
       ]
-    return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 1)
+    return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 1, enforce_checks=False)
 
   @staticmethod
   def get_cam_can_parser(CP):
@@ -584,5 +602,4 @@ class CarState(CarStateBase):
         ("SCC12", 50),
       ]
 
-    return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 2)
-
+    return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 2, enforce_checks=False)
