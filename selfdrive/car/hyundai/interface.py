@@ -2,7 +2,7 @@
 from cereal import car
 from selfdrive.config import Conversions as CV
 from selfdrive.car.hyundai.values import Ecu, ECU_FINGERPRINT, CAR, FINGERPRINTS, Buttons, FEATURES
-from selfdrive.car import STD_CARGO_KG, scale_rot_inertia, scale_tire_stiffness, is_ecu_disconnected, gen_empty_fingerprint
+from selfdrive.car import STD_CARGO_KG, scale_rot_inertia, scale_tire_stiffness, gen_empty_fingerprint
 from selfdrive.car.interfaces import CarInterfaceBase
 from selfdrive.controls.lib.lateral_planner import LANE_CHANGE_SPEED_MIN
 from common.params import Params
@@ -33,7 +33,7 @@ class CarInterface(CarInterfaceBase):
       ret.safetyModel = car.CarParams.SafetyModel.hyundai
 
     # Most Hyundai car ports are community features for now
-    ret.communityFeature = candidate not in [CAR.SONATA, CAR.PALISADE]
+    ret.communityFeature = True
 
     ret.steerActuatorDelay = 0.1  # Default delay
     ret.steerRateCost = 0.5
@@ -87,19 +87,19 @@ class CarInterface(CarInterfaceBase):
     elif candidate in [CAR.ELANTRA, CAR.ELANTRA_GT_I30]:
       ret.mass = 1275. + STD_CARGO_KG
       ret.wheelbase = 2.7
-      tire_stiffness_factor = 0.385    # stiffnessFactor settled on 1.0081302973865127
+      tire_stiffness_factor = 0.7
     elif candidate == CAR.KONA:
       ret.mass = 1275. + STD_CARGO_KG
       ret.wheelbase = 2.7
-      tire_stiffness_factor = 0.385
+      tire_stiffness_factor = 0.7
     elif candidate in [CAR.KONA_HEV, CAR.KONA_EV]:
       ret.mass = 1395. + STD_CARGO_KG
       ret.wheelbase = 2.6
-      tire_stiffness_factor = 0.385
+      tire_stiffness_factor = 0.7
     elif candidate in [CAR.IONIQ, CAR.IONIQ_EV_LTD]:
       ret.mass = 1490. + STD_CARGO_KG   #weight per hyundai site https://www.hyundaiusa.com/ioniq-electric/specifications.aspx
       ret.wheelbase = 2.7
-      tire_stiffness_factor = 0.385
+      tire_stiffness_factor = 0.7
     elif candidate in [CAR.GRANDEUR_IG, CAR.GRANDEUR_IG_HEV]:
       tire_stiffness_factor = 0.8
       ret.mass = 1640. + STD_CARGO_KG
@@ -113,16 +113,16 @@ class CarInterface(CarInterfaceBase):
     elif candidate == CAR.VELOSTER:
       ret.mass = 3558. * CV.LB_TO_KG
       ret.wheelbase = 2.80
-      tire_stiffness_factor = 0.5
+      tire_stiffness_factor = 0.9
     # kia
     elif candidate == CAR.SORENTO:
       ret.mass = 1985. + STD_CARGO_KG
       ret.wheelbase = 2.78
-      tire_stiffness_factor = 0.5
+      tire_stiffness_factor = 0.7
     elif candidate in [CAR.K5, CAR.K5_HEV]:
       ret.mass = 3558. * CV.LB_TO_KG
       ret.wheelbase = 2.80
-      tire_stiffness_factor = 0.5
+      tire_stiffness_factor = 0.7
     elif candidate == CAR.STINGER:
       tire_stiffness_factor = 1.125 # LiveParameters (Tunder's 2020)
       ret.mass = 1825.0 + STD_CARGO_KG
@@ -130,33 +130,33 @@ class CarInterface(CarInterfaceBase):
     elif candidate == CAR.FORTE:
       ret.mass = 3558. * CV.LB_TO_KG
       ret.wheelbase = 2.80
-      tire_stiffness_factor = 0.5
+      tire_stiffness_factor = 0.7
     elif candidate == CAR.CEED:
       ret.mass = 1350. + STD_CARGO_KG
       ret.wheelbase = 2.65
-      tire_stiffness_factor = 0.5
+      tire_stiffness_factor = 0.6
     elif candidate == CAR.SPORTAGE:
       ret.mass = 1985. + STD_CARGO_KG
       ret.wheelbase = 2.78
     elif candidate in [CAR.NIRO_HEV, CAR.NIRO_EV]:
       ret.mass = 1737. + STD_CARGO_KG
       ret.wheelbase = 2.7
-      tire_stiffness_factor = 0.385
+      tire_stiffness_factor = 0.7
     elif candidate in [CAR.K7, CAR.K7_HEV]:
-      tire_stiffness_factor = 0.6
+      tire_stiffness_factor = 0.7
       ret.mass = 1650. + STD_CARGO_KG
       ret.wheelbase = 2.855
     elif candidate == CAR.SELTOS:
       ret.mass = 1310. + STD_CARGO_KG
       ret.wheelbase = 2.6
-      tire_stiffness_factor = 0.5
+      tire_stiffness_factor = 0.7
 
 
     ret.lateralTuning.init('lqr')
 
-    ret.lateralTuning.lqr.scale = 1600.
+    ret.lateralTuning.lqr.scale = 1700.
     ret.lateralTuning.lqr.ki = 0.01
-    ret.lateralTuning.lqr.dcGain = 0.0027
+    ret.lateralTuning.lqr.dcGain = 0.00275
 
     ret.lateralTuning.lqr.a = [0., 1., -0.22619643, 1.21822268]
     ret.lateralTuning.lqr.b = [-1.92006585e-04, 3.95603032e-05]
@@ -166,12 +166,12 @@ class CarInterface(CarInterfaceBase):
 
     ret.steerRatio = 16.5
     ret.steerActuatorDelay = 0.1
-    ret.steerLimitTimer = 2.5
+    ret.steerLimitTimer = 1.6
 
-    ret.steerRateCost = 0.4
+    ret.steerRateCost = 0.5
 
     ret.steerMaxBP = [0.]
-    ret.steerMaxV = [1.5]
+    ret.steerMaxV = [1.3]
 
     if ret.openpilotLongitudinalControl:
 
@@ -183,15 +183,15 @@ class CarInterface(CarInterfaceBase):
       ret.longitudinalTuning.deadzoneBP = [0., 100.*CV.KPH_TO_MS]
       ret.longitudinalTuning.deadzoneV = [0., 0.015]
 
-      ret.gasMaxBP = [0., 10.*CV.KPH_TO_MS, 20.*CV.KPH_TO_MS, 70.*CV.KPH_TO_MS, 130.*CV.KPH_TO_MS ]
-      ret.gasMaxV = [0.4, 0.28, 0.19, 0.12, 0.08]
+      ret.gasMaxBP = [0., 5.*CV.KPH_TO_MS, 10.*CV.KPH_TO_MS, 30.*CV.KPH_TO_MS, 36.*CV.KPH_TO_MS, 37.*CV.KPH_TO_MS, 48.*CV.KPH_TO_MS, 55.*CV.KPH_TO_MS, 70.*CV.KPH_TO_MS, 100.*CV.KPH_TO_MS]
+      ret.gasMaxV = [0.1, 0.4443, 0.6062, 0.5594, 0.4284, 0.3744, 0.1805, 0.13, 0.12, 0.1] 
 
-      ret.brakeMaxBP = [0.]
-      ret.brakeMaxV = [1.3]
+      ret.brakeMaxBP = [0., 10.*CV.KPH_TO_MS, 29.*CV.KPH_TO_MS, 30.*CV.KPH_TO_MS, 50*CV.KPH_TO_MS, 65*CV.KPH_TO_MS]
+      ret.brakeMaxV = [0.28, 0.5533, 0.85201, 0.86601, 0.85601, 0.8380]
 
-      ret.stoppingBrakeRate = 0.2  # brake_travel/s while trying to stop
-      ret.startingBrakeRate = 0.8  # brake_travel/s while releasing on restart
-      ret.startAccel = 1.7
+      ret.stoppingBrakeRate = 0.165  # brake_travel/s while trying to stop
+      ret.startingBrakeRate = 0.98  # brake_travel/s while releasing on restart
+      ret.startAccel = 1.1
 
     else:
       # scc smoother
@@ -223,7 +223,8 @@ class CarInterface(CarInterfaceBase):
     ret.steerRatioRear = 0.
     ret.steerControlType = car.CarParams.SteerControlType.torque
 
-    ret.enableCamera = is_ecu_disconnected(fingerprint[0], FINGERPRINTS, ECU_FINGERPRINT, candidate, Ecu.fwdCamera) or has_relay
+    ret.enableCamera = True
+    ret.enableBsm = 0x58b in fingerprint[0]
     ret.stoppingControl = True
 
     # ignore CAN2 address if L-CAN on the same BUS
@@ -231,8 +232,6 @@ class CarInterface(CarInterfaceBase):
     ret.sasBus = 1 if 688 in fingerprint[1] and 1296 not in fingerprint[1] else 0
     ret.sccBus = 0 if 1056 in fingerprint[0] else 1 if 1056 in fingerprint[1] and 1296 not in fingerprint[1] \
                                                                      else 2 if 1056 in fingerprint[2] else -1
-
-    print("!!!!! BUS", "MDPS", ret.mdpsBus, "SAS", ret.sasBus, "SCC", ret.sccBus)
 
     ret.radarOffCan = ret.sccBus == -1
     ret.enableCruise = not ret.radarOffCan

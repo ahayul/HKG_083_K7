@@ -21,17 +21,17 @@ min_set_speed = 30 * CV.KPH_TO_MS
 class CarControllerParams:
   ACCEL_HYST_GAP = 0.02  # don't change accel command for small oscilalitons within this value
   ACCEL_MAX = 1.5  # 1.5 m/s2
-  ACCEL_MIN = -4.0  # 3   m/s2
+  ACCEL_MIN = -5.0  # 3   m/s2
   ACCEL_SCALE = max(ACCEL_MAX, -ACCEL_MIN)
   # SPAS steering limits
   STEER_ANG_MAX = 360  # SPAS Max Angle
-  STEER_ANG_MAX_RATE = 1.5  # SPAS Degrees per ms
+  STEER_ANG_MAX_RATE = 1.5 # SPAS Degrees per ms
 
 # Steer torque limits
 class SteerLimitParams:
-  STEER_MAX = 409   # 409 is the max, 255 is stock
-  STEER_DELTA_UP = 3
-  STEER_DELTA_DOWN = 5
+  STEER_MAX = 384   # 384 is the max, 255 is stock
+  STEER_DELTA_UP = 3 
+  STEER_DELTA_DOWN = 5 
   STEER_DRIVER_ALLOWANCE = 50
   STEER_DRIVER_MULTIPLIER = 2
   STEER_DRIVER_FACTOR = 1
@@ -143,7 +143,7 @@ class CarController():
     if clu11_speed > enabled_speed or not lkas_active:
       enabled_speed = clu11_speed
 
-    controls.clu_speed_ms = clu11_speed * CV.KPH_TO_MS
+    controls.clu_speed_ms = clu11_speed * CS.speed_conv_to_ms
 
     if not (min_set_speed < set_speed < 255 * CV.KPH_TO_MS):
       set_speed = min_set_speed
@@ -209,7 +209,7 @@ class CarController():
 
         if self.resume_cnt >= 8:
           self.resume_cnt = 0
-          self.resume_wait_timer = SccSmoother.get_wait_count()
+          self.resume_wait_timer = SccSmoother.get_wait_count() * 2
 
     # reset lead distnce after the car starts moving
     elif self.last_lead_distance != 0:
